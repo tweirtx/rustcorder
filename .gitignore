@@ -1,2 +1,4 @@
 /target
-config.toml
+token.txt
+.idea/
+rustcorder.iml

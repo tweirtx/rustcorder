@@ -8,10 +8,14 @@ struct Handler;
 impl EventHandler for Handler {
     fn message(&self, ctx: Context, message: Message) {
         if message.content.starts_with("r!record") {
-            //if message.author
-            message.channel_id.say(ctx.http, "You said ".to_owned() + message.content.as_str());
+            let voiceid = message.content.trim_start_matches("r!record ");
+            print!("{}", voiceid);
+            if voiceid.eq("r!record") {
+                message.channel_id.say(&ctx.http, "No ID given!");
+                return;
+            }
+            message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid);
         }
-
     }
     fn ready(&self, _: Context, ready: Ready) {
         println!("{} is connected!", ready.user.name);

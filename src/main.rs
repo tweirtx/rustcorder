@@ -10,10 +10,16 @@ impl EventHandler for Handler {
         if message.content.starts_with("r!record") {
             let voiceid = message.content.trim_start_matches("r!record ");
             print!("{}", voiceid);
-            if voiceid.eq("r!record") {
+            if voiceid =="r!record" {
                 message.channel_id.say(&ctx.http, "No ID given!");
                 return;
             }
+            let id_as_int = voiceid.parse::<u64>();
+            if id_as_int.is_err() {
+                message.channel_id.say(&ctx.http, "Failed to parse ID!");
+                return;
+            }
+            print!("{}", id_as_int.unwrap());
             message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid);
         }
     }

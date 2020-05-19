@@ -15,12 +15,15 @@ impl EventHandler for Handler {
                 return;
             }
             let id_as_int = voiceid.parse::<u64>();
-            if id_as_int.is_err() {
-                message.channel_id.say(&ctx.http, "Failed to parse ID!");
-                return;
+            match id_as_int {
+                Ok(x) => {
+                    message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid);
+                }
+                Err(id_as_int) => {
+                    message.channel_id.say(&ctx.http, "Failed to parse ID!");
+                    return;
+                }
             }
-            print!("{}", id_as_int.unwrap());
-            message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid);
         }
     }
     fn ready(&self, _: Context, ready: Ready) {

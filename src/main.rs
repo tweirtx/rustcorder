@@ -11,16 +11,16 @@ impl EventHandler for Handler {
             let voiceid = message.content.trim_start_matches("r!record ");
             print!("{}", voiceid);
             if voiceid =="r!record" {
-                message.channel_id.say(&ctx.http, "No ID given!");
+                message.channel_id.say(&ctx.http, "No ID given!").expect("Error sending msg!");
                 return;
             }
             let id_as_int = voiceid.parse::<u64>();
             match id_as_int {
                 Ok(x) => {
-                    message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid);
+                    message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid).expect("Error sending msg!");
                 }
                 Err(id_as_int) => {
-                    message.channel_id.say(&ctx.http, "Failed to parse ID!");
+                    message.channel_id.say(&ctx.http, "Failed to parse ID!").expect("Error sending msg!");
                     return;
                 }
             }
@@ -35,5 +35,5 @@ impl EventHandler for Handler {
 fn main() {
     let token = fs::read_to_string("token.txt").expect("token.txt read error");
     let mut dc = Client::new(token, Handler).expect("Creating client failed");
-    dc.start();
+    dc.start().expect("Error starting");
 }

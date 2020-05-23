@@ -30,7 +30,15 @@ impl EventHandler for Handler {
             match id_as_int {
                 Ok(x) => {
                     message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid).expect("Error sending msg!");
-                    manager.join(message.guild_id, ChannelId(x));
+                    let guild = message.guild_id;
+                    match guild {
+                        Some(i) => {
+                            manager.join(i, ChannelId(x));
+                        },
+                        None => {
+                            message.channel_id.say(&ctx.http, "Hey, wait a minute. This is a DM!");
+                        }
+                    }
                 }
                 Err(id_as_int) => {
                     message.channel_id.say(&ctx.http, "Failed to parse ID!").expect("Error sending msg!");

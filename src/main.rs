@@ -88,11 +88,11 @@ impl EventHandler for Handler {
                             }
                         },
                         None => {
-                            message.channel_id.say(&ctx.http, "Hey, wait a minute. This is a DM!");
+                            message.channel_id.say(&ctx.http, "Hey, wait a minute. This is a DM!").expect("Error replying");
                         }
                     }
                 }
-                Err(id_as_int) => {
+                Err(_id_as_int) => {
                     message.channel_id.say(&ctx.http, "Failed to parse ID!").expect("Error sending msg!");
                     return;
                 }

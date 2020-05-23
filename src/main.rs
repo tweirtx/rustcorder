@@ -5,13 +5,20 @@ use serenity::{
 };
 use std::fs;
 use serenity::model::id::ChannelId;
+use std::sync::Arc;
 
-struct Handler {
-    voice_manager: ClientVoiceManager,
+struct VoiceManager;
+
+impl TypeMapKey for VoiceManager {
+    type Value = Arc<Mutex<ClientVoiceManager>>;
 }
+
+struct Handler;
 
 impl EventHandler for Handler {
     fn message(&self, ctx: Context, message: Message) {
+        let manager_lock = ctx.data.read().get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
+        let mut manager = manager_lock.lock();
         if message.content.starts_with("r!record") {
             let voiceid = message.content.trim_start_matches("r!record ");
             print!("{}", voiceid);
@@ -23,7 +30,7 @@ impl EventHandler for Handler {
             match id_as_int {
                 Ok(x) => {
                     message.channel_id.say(&ctx.http, "Voice ID: ".to_owned() + voiceid).expect("Error sending msg!");
-                    Handler::join(&self.voice_manager, ChannelId(x));
+                    manager.join(message.guild_id, ChannelId(x));
                 }
                 Err(id_as_int) => {
                     message.channel_id.say(&ctx.http, "Failed to parse ID!").expect("Error sending msg!");
@@ -40,6 +47,10 @@ impl EventHandler for Handler {
 
 fn main() {
     let token = fs::read_to_string("token.txt").expect("token.txt read error");
-    let mut dc = Client::new(token, Handler { voice_manager: (Client.voice_manager) }).expect("Creating client failed");
+    let mut dc = Client::new(token, Handler).expect("Creating client failed");
+    {
+        let mut data = dc.data.write();
+        data.insert::<VoiceManager>(Arc::clone(&dc.voice_manager));
+    }
     dc.start().expect("Error starting");
 }

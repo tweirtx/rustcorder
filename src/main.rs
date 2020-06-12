@@ -7,6 +7,7 @@ use std::fs;
 use serenity::model::id::ChannelId;
 use std::sync::Arc;
 use serenity::voice::AudioReceiver;
+use 
 
 struct VoiceManager;
 
@@ -32,6 +33,7 @@ impl AudioReceiver for Receiver {
         // SSRCs and map the SSRC to the User ID and maintain a state in
         // `Receiver`. Using this map, you can map the `ssrc` in `voice_packet`
         // to the user ID and handle their audio packets separately.
+        println!("Speaking_update");
     }
 
     fn voice_packet(
@@ -55,6 +57,7 @@ impl AudioReceiver for Receiver {
     fn client_connect(&mut self, _ssrc: u32, _user_id: u64) {
         // You can implement your own logic here to handle a user who has joined the
         // voice channel e.g., allocate structures, map their SSRC to User ID.
+        println!("client_connect");
     }
 
     fn client_disconnect(&mut self, _user_id: u64) {
@@ -62,6 +65,7 @@ impl AudioReceiver for Receiver {
         // voice channel e.g., finalise processing of statistics etc.
         // You will typically need to map the User ID to their SSRC; observed when
         // speaking or connecting.
+        println!("client_dc");
     }
 }
 
@@ -85,6 +89,10 @@ impl EventHandler for Handler {
                         Some(i) => {
                             if let Some(handler) = manager.join(i, ChannelId(x)) {
                                 handler.listen(Some(Box::new(Receiver::new())));
+                                println!("right track, wrong train");
+                            }
+                            else {
+                                println!("oh darn");
                             }
                         },
                         None => {
@@ -106,6 +114,7 @@ impl EventHandler for Handler {
 
 
 fn main() {
+    pretty_env_logger::init();
     let token = fs::read_to_string("token.txt").expect("token.txt read error");
     let mut dc = Client::new(token, Handler).expect("Creating client failed");
     {

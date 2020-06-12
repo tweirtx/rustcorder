@@ -73,6 +73,10 @@ impl AudioReceiver for Receiver {
     }
 }
 
+impl VoiceManager {
+    fn new() -> AudioReceiver {}
+}
+
 #[group]
 struct General;
 
@@ -187,7 +191,7 @@ impl EventHandler for Handler {
                     match guild {
                         Some(i) => {
                             if let Some(handler) = manager.await.join(i, ChannelId(x)) {
-                                handler.listen(Some(Arc::new(VoiceManager::new.await)));
+                                handler.listen(Some(Arc::new(VoiceManager::new())));
                                 println!("right track, wrong train");
                             }
                             else {

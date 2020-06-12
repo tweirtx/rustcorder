@@ -74,7 +74,7 @@ impl AudioReceiver for Receiver {
 }
 
 impl VoiceManager {
-    fn new() -> AudioReceiver {}
+    fn new() -> VoiceManager {}
 }
 
 #[group]

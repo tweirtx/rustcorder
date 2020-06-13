@@ -16,6 +16,7 @@ use serenity::{
     voice::AudioReceiver,
 };
 use tokio::sync::Mutex;
+use tokio::io::BufWriter;
 
 struct VoiceManager;
 
@@ -25,10 +26,13 @@ impl TypeMapKey for VoiceManager {
 
 struct Handler;
 
-struct Receiver;
+struct Receiver {
+    writer: tokio::io::Result<tokio::fs::File>,
+}
 
 #[async_trait]
 impl AudioReceiver for Receiver {
+
     async fn speaking_update(&self, _ssrc: u32, _user_id: u64, _speaking: bool) {
         // You can implement logic here so that you can differentiate users'
         // SSRCs and map the SSRC to the User ID and maintain a state in
@@ -45,14 +49,7 @@ impl AudioReceiver for Receiver {
         data: &[i16],
         compressed_size: usize,
     ) {
-        println!("Audio packet's first 5 bytes: {:?}", data.get(..5));
-        println!(
-            "Audio packet sequence {:05} has {:04} bytes (decompressed from {}), SSRC {}",
-            sequence,
-            data.len(),
-            compressed_size,
-            ssrc,
-        );
+
     }
 
     async fn client_connect(&self, _ssrc: u32, _user_id: u64) {
@@ -111,7 +108,7 @@ impl EventHandler for Handler {
                     match guild {
                         Some(i) => {
                             if let Some(handler) = manager.await.join(i, ChannelId(x)) {
-                                handler.listen(Some(Arc::new(Receiver)));
+                                handler.listen(Some(Arc::new(Receiver { writer: BufWriter::with_capacity(50000000, tokio::fs::File::create("test.opus")) })));
                                 println!("right track, wrong train");
                             }
                             else {

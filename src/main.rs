@@ -26,7 +26,9 @@ impl TypeMapKey for VoiceManager {
     type Value = Arc<Mutex<ClientVoiceManager>>;
 }
 
-struct Handler;
+struct Handler {
+    receiver: Option<Arc<Receiver>>,
+}
 
 struct Receiver {
     writer: Mutex<tokio::io::BufWriter<tokio::fs::File>>,
@@ -88,7 +90,7 @@ async fn main() {
     pretty_env_logger::init();
     let token = fs::read_to_string("token.txt").expect("token.txt read error");
     let mut client = Client::new(&token)
-        .event_handler(Handler)
+        .event_handler(Handler {receiver: None})
         .await
         .expect("Err creating client");
 
@@ -105,7 +107,7 @@ async fn main() {
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
-    async fn message(&self, mut ctx: Context, message: Message) {
+    async fn message(&mut self, mut ctx: Context, message: Message) {
         let manager_lock = ctx.data.read().await.get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
         let manager = manager_lock.lock();
         if message.content.starts_with("r!record") {
@@ -128,8 +130,10 @@ impl EventHandler for Handler {
                                         let encoder = Encoder::new(128000, opus::Channels::Stereo, Application::Voip);
                                         match encoder {
                                             Ok(encoder_to_use) => {
-                                                
-                                                handler.listen(Some(Arc::new(Receiver { writer: Mutex::new(BufWriter::with_capacity(50000000, filewriter)), encoder: Mutex::new(encoder_to_use) })));
+                                                let rec1 = Arc::new(Receiver { writer: Mutex::new(BufWriter::with_capacity(50000000, filewriter)), encoder: Mutex::new(encoder_to_use) });
+                                                let rec2 = rec1.clone();
+                                                self.receiver = Some(rec1);
+                                                handler.listen(Some(rec2));
                                             }
                                             Err(e) => {
                                                 println!("{}", e);
@@ -158,7 +162,18 @@ impl EventHandler for Handler {
             }
         }
         else if message.content.starts_with("r!end") {
-            client.
+            match &self.receiver {
+                Some(rec) => {
+                    rec.writer.lock().await.close();
+                    let manager_lock = ctx.data.read().await.get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
+                    let manager = manager_lock.lock();
+                    manager.await.leave(&self);
+                },
+                None => {
+                    message.channel_id.say(&ctx.http, "Error leaving: not currently recording!");
+                }
+            }
+
         }
     }
     async fn ready(&self, _: Context, ready: Ready) {

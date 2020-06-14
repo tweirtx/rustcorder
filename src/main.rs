@@ -17,6 +17,7 @@ use serenity::{
 };
 use tokio::sync::Mutex;
 use tokio::io::BufWriter;
+use tokio::io::AsyncWriteExt;
 
 struct VoiceManager;
 
@@ -27,7 +28,7 @@ impl TypeMapKey for VoiceManager {
 struct Handler;
 
 struct Receiver {
-    writer: tokio::io::Result<tokio::fs::File>,
+    writer: tokio::io::BufWriter<tokio::fs::File>,
 }
 
 #[async_trait]
@@ -49,7 +50,11 @@ impl AudioReceiver for Receiver {
         data: &[i16],
         compressed_size: usize,
     ) {
-
+        println!("Received voice data");
+        for datum in data {
+            let mut writer = self.writer;
+            writer.write_i16(*datum).await;
+        }
     }
 
     async fn client_connect(&self, _ssrc: u32, _user_id: u64) {
@@ -108,8 +113,16 @@ impl EventHandler for Handler {
                     match guild {
                         Some(i) => {
                             if let Some(handler) = manager.await.join(i, ChannelId(x)) {
-                                handler.listen(Some(Arc::new(Receiver { writer: BufWriter::with_capacity(50000000, tokio::fs::File::create("test.opus")) })));
-                                println!("right track, wrong train");
+                                match tokio::fs::File::create("test.opus").await {
+                                    Ok(filewriter) => {
+                                        handler.listen(Some(Arc::new(Receiver { writer: BufWriter::with_capacity(50000000, filewriter) })));
+                                        println!("right track, wrong train");
+                                    }
+                                    Err(E) => {
+                                        println!("Error creating opus file");
+                                    }
+                                }
+
                             }
                             else {
                                 println!("oh darn");

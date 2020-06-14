@@ -164,13 +164,20 @@ impl EventHandler for Handler {
         else if message.content.starts_with("r!end") {
             match &self.receiver {
                 Some(rec) => {
-                    rec.writer.lock().await.close();
+                    rec.writer.lock().await.shutdown();
                     let manager_lock = ctx.data.read().await.get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
                     let manager = manager_lock.lock();
-                    manager.await.leave(&self);
+                    match &message.guild_id {
+                        Some(T) => {
+                            manager.await.leave(T);
+                        }
+                        None => {
+                            &message.channel_id.say(&ctx.http, "Error: this is a DM").await.expect("Error sending message");
+                        }
+                    }
                 },
                 None => {
-                    message.channel_id.say(&ctx.http, "Error leaving: not currently recording!");
+                    message.channel_id.say(&ctx.http, "Error ending: not currently recording!");
                 }
             }
 

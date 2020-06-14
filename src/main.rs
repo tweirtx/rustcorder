@@ -18,6 +18,7 @@ use serenity::{
 use tokio::sync::Mutex;
 use tokio::io::BufWriter;
 use tokio::io::AsyncWriteExt;
+use opus::{Encoder, Application};
 
 struct VoiceManager;
 
@@ -28,7 +29,8 @@ impl TypeMapKey for VoiceManager {
 struct Handler;
 
 struct Receiver {
-    writer: tokio::io::BufWriter<tokio::fs::File>,
+    writer: Mutex<tokio::io::BufWriter<tokio::fs::File>>,
+    encoder: Mutex<Encoder>
 }
 
 #[async_trait]
@@ -43,18 +45,26 @@ impl AudioReceiver for Receiver {
 
     async fn voice_packet(
         &self,
-        ssrc: u32,
-        sequence: u16,
+        _ssrc: u32,
+        _sequence: u16,
         _timestamp: u32,
         _stereo: bool,
         data: &[i16],
-        compressed_size: usize,
+        _compressed_size: usize,
     ) {
         println!("Received voice data");
-        for datum in data {
-            let mut writer = self.writer;
-            writer.write_i16(*datum).await;
+        match self.encoder.lock().await.encode_vec(data, usize::MAX) {
+            Ok(opus_encoded) => {
+                let mut writer = self.writer.lock().await;
+                for part in opus_encoded {
+                    writer.write_u8(part).await;
+                }
+            }
+            Err(e) => {
+                println!("{}", e);
+            }
         }
+        //writer::Drop.await;
     }
 
     async fn client_connect(&self, _ssrc: u32, _user_id: u64) {
@@ -115,8 +125,16 @@ impl EventHandler for Handler {
                             if let Some(handler) = manager.await.join(i, ChannelId(x)) {
                                 match tokio::fs::File::create("test.opus").await {
                                     Ok(filewriter) => {
-                                        handler.listen(Some(Arc::new(Receiver { writer: BufWriter::with_capacity(50000000, filewriter) })));
-                                        println!("right track, wrong train");
+                                        let encoder = Encoder::new(128000, opus::Channels::Stereo, Application::Voip);
+                                        match encoder {
+                                            Ok(encoder_to_use) => {
+                                                
+                                                handler.listen(Some(Arc::new(Receiver { writer: Mutex::new(BufWriter::with_capacity(50000000, filewriter)), encoder: Mutex::new(encoder_to_use) })));
+                                            }
+                                            Err(e) => {
+                                                println!("{}", e);
+                                            }
+                                        }
                                     }
                                     Err(E) => {
                                         println!("Error creating opus file");
@@ -138,6 +156,9 @@ impl EventHandler for Handler {
                     return;
                 }
             }
+        }
+        else if message.content.starts_with("r!end") {
+            client.
         }
     }
     async fn ready(&self, _: Context, ready: Ready) {

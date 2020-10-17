@@ -27,7 +27,7 @@ impl TypeMapKey for VoiceManager {
 }
 
 struct Handler {
-    receiver: Option<Arc<Receiver>>,
+    receiver: Option<Mutex<Arc<Receiver>>>,
 }
 
 struct Receiver {
@@ -107,7 +107,7 @@ async fn main() {
 
 #[serenity::async_trait]
 impl EventHandler for Handler {
-    async fn message(&mut self, mut ctx: Context, message: Message) {
+    async fn message(&self, ctx: Context, message: Message) {
         let manager_lock = ctx.data.read().await.get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
         let manager = manager_lock.lock();
         if message.content.starts_with("r!record") {
@@ -132,7 +132,7 @@ impl EventHandler for Handler {
                                             Ok(encoder_to_use) => {
                                                 let rec1 = Arc::new(Receiver { writer: Mutex::new(BufWriter::with_capacity(50000000, filewriter)), encoder: Mutex::new(encoder_to_use) });
                                                 let rec2 = rec1.clone();
-                                                self.receiver = Some(rec1);
+                                                self.receiver = Some(Mutex::new(rec1));
                                                 handler.listen(Some(rec2));
                                             }
                                             Err(e) => {
@@ -164,7 +164,7 @@ impl EventHandler for Handler {
         else if message.content.starts_with("r!end") {
             match &self.receiver {
                 Some(rec) => {
-                    rec.writer.lock().await.shutdown();
+                    rec.lock().await.writer.lock().await.shutdown();
                     let manager_lock = ctx.data.read().await.get::<VoiceManager>().cloned().expect("Expected VoiceManager in ShareMap.");
                     let manager = manager_lock.lock();
                     match &message.guild_id {
